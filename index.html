@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mappa - Non Aprite Quella Podcast</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--color-background);
+            color: var(--color-text);
+        }
+
+        :root {
+            --color-background: #f5f5f5;
+            --color-surface: #ffffff;
+            --color-text: #1a1a1a;
+            --color-text-secondary: #666;
+            --color-primary: #2180a1;
+            --color-primary-hover: #1a6b82;
+            --color-accent: #ff6b6b;
+            --color-border: #e0e0e0;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --color-background: #1f1f1f;
+                --color-surface: #2a2a2a;
+                --color-text: #e0e0e0;
+                --color-text-secondary: #999;
+                --color-primary: #4da8c2;
+                --color-primary-hover: #6cb8d0;
+                --color-border: #444;
+            }
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            padding: 0;
+        }
+
+        .header {
+            background: var(--color-surface);
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--color-border);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            z-index: 100;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin: 0 0 4px 0;
+        }
+
+        .header p {
+            font-size: 13px;
+            color: var(--color-text-secondary);
+            margin: 0;
+        }
+
+        .controls {
+            padding: 12px 20px;
+            background: var(--color-surface);
+            border-bottom: 1px solid var(--color-border);
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 250px;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid var(--color-border);
+            border-radius: 6px;
+            font-size: 13px;
+            background: var(--color-background);
+            color: var(--color-text);
+        }
+
+        .search-box input::placeholder {
+            color: var(--color-text-secondary);
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-filter {
+            padding: 6px 12px;
+            border: 1px solid var(--color-border);
+            background: var(--color-background);
+            color: var(--color-text);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 200ms ease;
+        }
+
+        .btn-filter:hover {
+            background: var(--color-primary);
+            color: white;
+            border-color: var(--color-primary);
+        }
+
+        .btn-filter.active {
+            background: var(--color-primary);
+            color: white;
+            border-color: var(--color-primary);
+        }
+
+        .season-filter {
+            display: flex;
+        }
+
+        .season-filter select {
+            padding: 6px 12px;
+            border: 1px solid var(--color-border);
+            background: var(--color-background);
+            color: var(--color-text);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 200ms ease;
+        }
+
+        .season-filter select:hover {
+            border-color: var(--color-primary);
+        }
+
+        .season-filter select:focus {
+            outline: none;
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 2px rgba(33, 128, 161, 0.1);
+        }
+
+        #map {
+            flex: 1;
+            background: linear-gradient(135deg, #e8f4f8 0%, #f0f8fa 100%);
+        }
+
+        .popup-content {
+            min-width: 250px;
+            padding: 12px;
+        }
+
+        .popup-content h3 {
+            font-size: 15px;
+            font-weight: 600;
+            margin: 0 0 8px 0;
+            color: var(--color-primary);
+        }
+
+        .popup-content p {
+            font-size: 13px;
+            line-height: 1.5;
+            margin: 0 0 6px 0;
+            color: var(--color-text);
+        }
+
+        .popup-location {
+            font-size: 12px;
+            color: var(--color-text-secondary);
+            margin: 8px 0 0 0;
+            padding: 8px 0 0 0;
+            border-top: 1px solid var(--color-border);
+        }
+
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: var(--color-surface);
+            padding: 16px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            font-size: 12px;
+            z-index: 99;
+            max-width: 200px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 6px 0;
+        }
+
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .stats {
+            padding: 12px 20px;
+            background: var(--color-surface);
+            border-top: 1px solid var(--color-border);
+            font-size: 12px;
+            color: var(--color-text-secondary);
+            text-align: center;
+        }
+
+        .leaflet-popup-content-wrapper {
+            background: var(--color-surface) !important;
+            color: var(--color-text) !important;
+            border-radius: 8px !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+        }
+
+        .leaflet-popup-tip {
+            background: var(--color-surface) !important;
+        }
+
+        .leaflet-container a.leaflet-popup-close-button {
+            color: var(--color-text) !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎙️ Non Aprite Quella Podcast - Mappa Interattiva</h1>
+            <p>Scopri i casi del podcast geolocalizzati sulla mappa del mondo</p>
+        </div>
+
+        <div class="controls">
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="Cerca per nome del caso o città...">
+            </div>
+            <div class="filter-buttons">
+                <button class="btn-filter active" onclick="filterByContinent('all')">Tutti i Casi</button>
+                <button class="btn-filter" onclick="filterByContinent('italia')">Italia</button>
+                <button class="btn-filter" onclick="filterByContinent('europa')">Europa</button>
+                <button class="btn-filter" onclick="filterByContinent('mondo')">Resto del Mondo</button>
+            </div>
+            <div class="season-filter">
+                <select id="seasonSelect" onchange="filterBySeason(this.value)">
+                    <option value="all">Tutte le Stagioni</option>
+                    <option value="1">Stagione 1</option>
+                    <option value="2">Stagione 2</option>
+                    <option value="3">Stagione 3</option>
+                    <option value="4">Stagione 4</option>
+                    <option value="5">Stagione 5</option>
+                    <option value="6">Stagione 6</option>
+                    <option value="7">Stagione 7</option>
+                    <option value="8">Stagione 8</option>
+                    <option value="9">Stagione 9</option>
+                    <option value="10">Stagione 10</option>
+                    <option value="11">Stagione 11</option>
+                    <option value="12">Stagione 12</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="map"></div>
+
+        <div class="legend">
+            <strong style="margin-bottom: 8px; display: block;">Legenda</strong>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #ff4757;"></div>
+                <span>Italia</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #3498db;"></div>
+                <span>Europa (altri)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #f39c12;"></div>
+                <span>Resto del Mondo</span>
+            </div>
+        </div>
+
+        <div class="stats">
+            <span id="caseCount">Caricando i casi...</span>
+        </div>
+    </div>
+
+    <script>
+        const caseData = [
+            // STAGIONE 12
+            { name: "Il Caso della Mantide di Parabiago", location: "Parabiago, Milano, Italia", lat: 45.5417, lng: 8.9336, continent: "italia", season: 12, description: "Estate 2024: una donna brasiliana accusata di aver orchestrato un piano diabolico" },
+            { name: "Il Colpo al Louvre feat Leonardo Notarbartolo", location: "Parigi, Francia", lat: 48.8606, lng: 2.3352, continent: "europa", season: 12, description: "19 ottobre 2025: il colpo audace al museo più visitato al mondo" },
+            { name: "Il Caso della Bestia del Gévaudan", location: "Gévaudan, Francia", lat: 44.7, lng: 3.5, continent: "europa", season: 12, description: "Estate 1764: una creatura misteriosa che attacca solo gli esseri umani" },
+            { name: "Il Caso Gary Faulkner - Killing Osama", location: "Greeley, Colorado / Pakistan", lat: 40.3968, lng: -104.6068, continent: "mondo", season: 12, description: "2010: un uomo con insufficienza renale tenta di catturare Osama con una spada" },
+            { name: "Il Caso Epstein - La Fine", location: "Palm Beach, Florida, USA", lat: 26.7153, lng: -80.0534, continent: "mondo", season: 12, description: "2008: L'FBI ha prove schiaccianti ma il caso viene insabbiato" },
+            { name: "Il Caso Epstein - La Corruzione", location: "Palm Beach, Florida, USA", lat: 26.7153, lng: -80.0534, continent: "mondo", season: 12, description: "2005: una telefonata rivela il traffico sessuale di Epstein" },
+            { name: "Il Caso Epstein - Il Seme dell'Orrore", location: "Palm Beach, Florida, USA", lat: 26.7153, lng: -80.0534, continent: "mondo", season: 12, description: "2005: il traffico sessuale di minorenni di Epstein viene scoperto" },
+            { name: "Il Caso Charlie Kirk", location: "Orem, Utah, USA", lat: 40.2969, lng: -111.6554, continent: "mondo", season: 12, description: "10 settembre 2025: una tragedia durante un dibattito universitario" },
+            { name: "Il Caso dell'Esorcismo di Ossett", location: "Ossett, Yorkshire, Regno Unito", lat: 53.6482, lng: -1.6292, continent: "europa", season: 12, description: "1974: un caso di esorcismo fallito e tragico in Inghilterra" },
+            { name: "Il Caso Maudsley - Il Mangia-Pedofili", location: "Londra, Regno Unito", lat: 51.5074, lng: -0.1278, continent: "europa", season: 12, description: "1973: un giovane uccide pedofili - il serial killer che mangia i pedofili" },
+            // STAGIONE 11
+            { name: "Il Caso Falleni - Fallo Con Me", location: "Sydney, Australia", lat: -33.8688, lng: 151.2093, continent: "mondo", season: 11, description: "Inizi 1900: un marinaio italiano costruisce una nuova identità e si sposa due volte" },
+            { name: "Il Caso Jack Parsons - L'Omuncolo", location: "Pasadena, California, USA", lat: 34.1478, lng: -118.1445, continent: "mondo", season: 11, description: "Marzo 1946: uno scienziato missilistico compie esperimenti di magia nera" },
+            { name: "Il Caso Jack Parsons - Sangue Versato", location: "Pasadena, California, USA", lat: 34.1478, lng: -118.1445, continent: "mondo", season: 11, description: "Anni '40: uno scienziato della NASA pratica magia sessuale di notte" },
+            { name: "Il Caso Pachita - Psicochirurgia", location: "Messico", lat: 25.6866, lng: -100.3161, continent: "mondo", season: 11, description: "Anni '70: una donna compie operazioni chirurgiche miracolose senza anestesia" },
+            { name: "Il Caso Diddy #3 - Il Processo", location: "New York, USA", lat: 40.7128, lng: -74.0060, continent: "mondo", season: 11, description: "Maggio 2025: il processo di Sean Diddy Combs per traffico sessuale" },
+            { name: "Il Caso della Spedizione Donner - Una Buona Famiglia", location: "Sierra Nevada, California, USA", lat: 39.0, lng: -120.5, continent: "mondo", season: 11, description: "Inverno 1846: 87 coloni ricorrono al cannibalismo per sopravvivere" },
+            { name: "Il Caso della Spedizione Donner - Paiute", location: "Sierra Nevada, California, USA", lat: 39.0, lng: -120.5, continent: "mondo", season: 11, description: "1846: una scorciatoia fatale attraverso le montagne della Sierra Nevada" },
+            { name: "Il Caso Gulotta - È Stato Nessuno", location: "Alcamo Marina, Trapani, Sicilia", lat: 37.9769, lng: 12.5867, continent: "italia", season: 11, description: "27 gennaio 1976: Giuseppe Gulotta accusato ingiustamente di omicidio" },
+            // STAGIONE 10
+            { name: "Il Caso della Setta dei Gatti - Gatti Amari", location: "Washington, USA", lat: 47.6062, lng: -122.3321, continent: "mondo", season: 10, description: "Inizi 2000: una setta che venera gatti salvifici nel nuovo millennio" },
+            { name: "Il Caso della Setta dei Gatti - Apocalypse Miao", location: "Washington, USA", lat: 47.6062, lng: -122.3321, continent: "mondo", season: 10, description: "Inizi 2000: una chiesa cristiana diventa un culto mistico dei gatti" },
+            { name: "Il Caso Bonanno - Pidocchi e Mariti", location: "Palermo, Italia", lat: 38.1157, lng: 13.3615, continent: "italia", season: 10, description: "1788: una donna anziana vende una misteriosa pozione a Palermo" },
+            { name: "Il Caso del Conte Dante - Il Tamarro Colpisce Ancora", location: "Chicago, USA", lat: 41.8781, lng: -87.6298, continent: "mondo", season: 10, description: "1974: il maestro di arti marziali più pericoloso della storia" },
+            { name: "Il Caso del Conte Dante - L'uomo più letale del mondo", location: "Chicago, USA", lat: 41.8781, lng: -87.6298, continent: "mondo", season: 10, description: "Anni '60: un maestro di arti marziali vestito da Dracula" },
+            { name: "Il Caso Juliane Koepcke - La Sopravvissuta", location: "Amazzonia, Perù", lat: -12.0463, lng: -77.0372, continent: "mondo", season: 10, description: "24 dicembre 1971: sopravvissuta a un incidente aereo da 3000 metri" },
+            { name: "Il Caso Netta Fornario", location: "Iona, Isole Ebridi (Scozia)", lat: 56.2403, lng: -6.4099, continent: "europa", season: 10, description: "1929: una donna italiana muore misteriosamente su un'isola magica" },
+            { name: "Il Caso Axman - Il Serial Killer di Italiani", location: "New Orleans, Louisiana, USA", lat: 29.9511, lng: -90.2623, continent: "mondo", season: 10, description: "Inizi 1900: un assassino armato di ascia prende di mira gli italiani" },
+            { name: "Il Caso Luigi Mangione - Nega, Difendi, Deponi", location: "Baltimore, Maryland, USA", lat: 39.2904, lng: -76.6122, continent: "mondo", season: 10, description: "Un giovane brillante scompare per 6 mesi da una famiglia benestante" },
+            // STAGIONE 9
+            { name: "Il Caso del Generale Culo Nudo", location: "Monrovia, Liberia", lat: 6.3156, lng: -10.8073, continent: "mondo", season: 9, description: "Anni '90: una figura assurda dalla guerra civile della Liberia" },
+            { name: "Il Caso Chiruzzi - Il Bandito", location: "Bruxelles, Belgio", lat: 50.8503, lng: 4.3517, continent: "europa", season: 9, description: "27 settembre 1976: quattro italiani rapinano la Banca Inglese" },
+            { name: "Il Caso Chiruzzi - Il Falco della Basilicata", location: "Bernalda, Basilicata, Italia", lat: 40.4018, lng: 16.8731, continent: "italia", season: 9, description: "1952: nasce un futuro rapinatore prolifico italiano" },
+            { name: "Il Caso Urtubia", location: "Spagna, Navarra", lat: 42.8160, lng: -1.6442, continent: "europa", season: 9, description: "Anni '30+: un anarchico sfida il regime di Franco" },
+            { name: "Il Caso Diddy #2 - Le Nuove Accuse", location: "New York, USA", lat: 40.7128, lng: -74.0060, continent: "mondo", season: 9, description: "16 settembre 2024: P. Diddy arrestato per scandali sessuali" },
+            { name: "Il Caso Sigonella", location: "Mediterraneo", lat: 37.4419, lng: 14.9000, continent: "europa", season: 9, description: "Ottobre 1985: una nave da crociera dirottata da un commando palestinese" },
+            { name: "Il Caso Giovanni Vigliotto", location: "Stati Uniti", lat: 39.8283, lng: -98.5795, continent: "mondo", season: 9, description: "Anni '80: un uomo affascinante sposa decine di donne e ruba i loro soldi" },
+            { name: "Il Caso Breivik - Isolati", location: "Isola di Utøya, Norvegia", lat: 59.9139, lng: 10.7522, continent: "europa", season: 9, description: "22 luglio 2011: 69 persone uccise, la maggior parte adolescenti" },
+            { name: "Il Caso Breivik - Il Toy", location: "Oslo, Norvegia", lat: 59.9139, lng: 10.7522, continent: "europa", season: 9, description: "22 luglio 2011: una bomba esplode a Oslo prima della strage" },
+            // STAGIONE 8
+            { name: "Il Caso Pedro Rodrigues Filho - Il Matador", location: "Brasile", lat: -15.8267, lng: -48.0516, continent: "mondo", season: 8, description: "Un giustiziere nel Brasile criminale amministra la sua giustizia" },
+            { name: "Il Caso Abe Sada - L'amore a Pezzi", location: "Tokyo, Giappone", lat: 35.6762, lng: 139.6503, continent: "mondo", season: 8, description: "Anni '30: una passione che finisce tragicamente" },
+            { name: "Il Caso Vukovic - L'angelo", location: "Anchorage, Alaska, USA", lat: 61.2181, lng: -149.9003, continent: "mondo", season: 8, description: "Un vigilante caccia e punisce pedofili condannati" },
+            { name: "Il Caso Vukovic - Il Vendicatore dell'Alaska", location: "Alaska, USA", lat: 64.0685, lng: -152.2782, continent: "mondo", season: 8, description: "Un abusato si vendica personalmente sui pedofili" },
+            { name: "Il Caso Dennis Nilsen - Cena per Uno", location: "Londra, Regno Unito", lat: 51.5074, lng: -0.1278, continent: "europa", season: 8, description: "Fine anni '70: un impiegato tranquillo è un serial killer metodico" },
+            { name: "Il Caso Dennis Nilsen - Case da Incubo", location: "Londra, Regno Unito", lat: 51.5074, lng: -0.1278, continent: "europa", season: 8, description: "Fine anni '70: ex militare e poliziotto è un serial killer calcolatore" },
+            { name: "Il Caso P Diddy Feat Jake La Furia", location: "Los Angeles, USA", lat: 34.0522, lng: -118.2437, continent: "mondo", season: 8, description: "Marzo 2024: due mansion invase in una grande operazione" },
+            { name: "Il Caso Lolli - L'Italiano Vero", location: "Rimini, Italia", lat: 44.0571, lng: 12.5674, continent: "italia", season: 8, description: "Un playboy multimilionario vede crollare la sua vita di lusso" },
+            { name: "Il Caso Bamberski", location: "Francia / Germania", lat: 48.8566, lng: 2.3522, continent: "europa", season: 8, description: "Estate 1982: la figlia viene ritrovata morta in Germania" },
+            // STAGIONE 7
+            { name: "Il Caso Javier Milei - Dogman", location: "Argentina", lat: -34.6037, lng: -58.3816, continent: "mondo", season: 7, description: "2023: un personaggio stravagante dichiara di essere un gladiatore romano" },
+            { name: "Il Caso Paleokostas - L'imprendibile", location: "Grecia", lat: 39.0742, lng: 21.8243, continent: "europa", season: 7, description: "Un fuorilegge greco per tre decenni umilia la polizia" },
+            { name: "Il Caso Paleokostas - Il Montanaro", location: "Grecia", lat: 39.0742, lng: 21.8243, continent: "europa", season: 7, description: "Il mitico 'Robin Hood greco' tra le montagne" },
+            { name: "Il Caso Boursicot - L'amour è pieno di sorprese", location: "Pechino, Cina", lat: 39.9042, lng: 116.4074, continent: "mondo", season: 7, description: "1964: un giovane francese si innamora durante la Guerra Fredda" },
+            { name: "Il Caso Boursicot - La spia che mi baciò", location: "Cina", lat: 39.9042, lng: 116.4074, continent: "mondo", season: 7, description: "Un diplomatico francese nasconde un segreto per 18 anni" },
+            { name: "Il Caso dei Cosmonauti Perduti", location: "Torino, Italia", lat: 45.0703, lng: 7.6869, continent: "italia", season: 7, description: "Anni '60: fratelli radio-amatori captano segnali dallo spazio" },
+            { name: "Il Caso Serenissimi", location: "Venezia, Italia", lat: 45.4408, lng: 12.3155, continent: "italia", season: 7, description: "9 maggio 1997: un tentativo di colpo a Piazza San Marco" },
+            // STAGIONE 6
+            { name: "Il Caso OceanGate", location: "Oceano Atlantico (Titanic)", lat: 41.7310, lng: -49.9502, continent: "mondo", season: 6, description: "18 giugno 2023: sottomarino implode durante discesa al Titanic" },
+            { name: "Il Caso Pizza Bomber - Morte a Domicilio", location: "Eerie, Pennsylvania, USA", lat: 42.1015, lng: -80.1218, continent: "mondo", season: 6, description: "Un fattorino porta una bomba in banca durante una rapina" },
+            { name: "Il Caso Pizza Bomber - Morte di un fattorino viaggiatore", location: "Pennsylvania, USA", lat: 40.5908, lng: -76.2023, continent: "mondo", season: 6, description: "28 agosto 2003: un piano folle con un ordigno esplosivo" },
+            { name: "Il Caso del Protocollo Cazzaniga - L'angelo della morte", location: "Saronno, Italia", lat: 45.6152, lng: 8.9683, continent: "italia", season: 6, description: "29 novembre 2016: arresti per 15 omicidi sospetti in ospedale" },
+            { name: "Il Caso Malloy - L'uomo che non sapeva morire", location: "New York, USA", lat: 40.7128, lng: -74.0060, continent: "mondo", season: 6, description: "Inizi anni '30: tentativo di uccidere un povero irlandese ubriaco" },
+            { name: "Il Caso Malloy - L'Irlandese di ferro", location: "New York, USA", lat: 40.7128, lng: -74.0060, continent: "mondo", season: 6, description: "Proibizionismo: accendono polizze sulla vita per fare soldi" },
+            { name: "Il Caso Simone Pianetti", location: "Valle Brembana, Italia", lat: 45.9500, lng: 9.5833, continent: "italia", season: 6, description: "13 luglio 1913: un cacciatore si alza con intenti omicidi" },
+            { name: "Il Caso Ludwig - Vietato Scopare", location: "Italia, Anni di Piombo", lat: 43.7696, lng: 11.2558, continent: "italia", season: 6, description: "Una setta neonazista semina terrore durante gli Anni di Piombo" },
+            { name: "Il Caso Ludwig - Dio è con Noi", location: "Italia, Anni di Piombo", lat: 43.7696, lng: 11.2558, continent: "italia", season: 6, description: "Omicidi rivendicati con biglietti in caratteri runici" },
+            { name: "Leonardo Notarbartolo - L'intervista", location: "Anversa, Belgio", lat: 51.2194, lng: 4.4024, continent: "europa", season: 6, description: "La mente dietro il 'colpo del secolo' - intervista esclusiva" },
+            { name: "Il Caso Notarbartolo - La rapina del secolo", location: "Anversa, Belgio", lat: 51.2194, lng: 4.4024, continent: "europa", season: 6, description: "14 febbraio 2003: rapina del caveau più protetto del mondo" },
+            { name: "Il Caso Damanhur", location: "Vidracco, Torino, Italia", lat: 45.3658, lng: 7.5412, continent: "italia", season: 6, description: "1978: persone scavano un tempio sotterraneo per 16 anni" },
+            { name: "Il Caso dei Misteri di Alleghe", location: "Alleghe, Belluno, Italia", lat: 46.3144, lng: 12.0708, continent: "italia", season: 6, description: "Maggio 1933: strani suicidi in un albergo dolomita" },
+            // STAGIONE 5
+            { name: "Il Caso Narcosatanisti - La Muerte", location: "Matamoros, Messico", lat: 25.9969, lng: -97.1564, continent: "mondo", season: 5, description: "Fine anni '80: setta di narcos pratica magia nera" },
+            { name: "Il Caso Narcosatanisti - El Padrino", location: "Messico, Miami", lat: 25.7617, lng: -80.1918, continent: "mondo", season: 5, description: "Fine anni '80: un modello diventa narco protetto dalla magia" },
+            { name: "Il Caso Narcosatanisti - Palo Mayombe", location: "Matamoros, Messico", lat: 25.9969, lng: -97.1564, continent: "mondo", season: 5, description: "1989: il primo cartello che opera tramite magia nera" },
+            { name: "Il Caso Minichiello - 18 ore per morire", location: "Los Angeles, USA", lat: 34.0522, lng: -118.2437, continent: "mondo", season: 5, description: "31 ottobre 1969: un marine dirottare un Boeing 707" },
+            { name: "Il Caso Minichiello - First Blood", location: "Los Angeles, USA", lat: 34.0522, lng: -118.2437, continent: "mondo", season: 5, description: "31 ottobre 1969: Raffaele Minichiello dirottare un aereo" },
+            { name: "Il Caso del Golpe Borghese", location: "Roma, Italia", lat: 41.9028, lng: 12.4964, continent: "italia", season: 5, description: "7-8 dicembre 1970: tentativo di colpe italiano" },
+            { name: "Il Caso Pont-Saint-Esprit", location: "Sud Francia", lat: 44.2333, lng: 4.7667, continent: "europa", season: 5, description: "1951: un villaggio colpito da isteria di massa" },
+            { name: "Il Caso Aum Shinrikyo - Attacco a Tokyo", location: "Tokyo, Giappone", lat: 35.6762, lng: 139.6503, continent: "mondo", season: 5, description: "Metà anni '90: setta prepara attacco a Tokyo con gas" },
+            { name: "Il Caso Aum Shinrikyo - Aria di Morte", location: "Giappone", lat: 36.2048, lng: 138.2529, continent: "mondo", season: 5, description: "Fine anni '80: un ex spacciatore fonda una setta" },
+            // STAGIONE 4
+            { name: "Il Caso Meiwes - Fatto in casa per voi", location: "Germania", lat: 51.1657, lng: 10.4515, continent: "europa", season: 4, description: "2001: un uomo ossessionato dal cannibalismo online" },
+            { name: "Il Caso Meiwes - Apericannibalismo", location: "Germania", lat: 51.1657, lng: 10.4515, continent: "europa", season: 4, description: "2001: due uomini si incontrano per mangiare una persona" },
+            { name: "Il Caso dell'uomo che fece esplodere il Papa", location: "Vaticano", lat: 41.9029, lng: 12.4534, continent: "europa", season: 4, description: "1958: l'archiatra del Papa ha un ruolo strano" },
+            { name: "Il Caso delle Olimpiadi del 1904", location: "St. Louis, Missouri, USA", lat: 38.6270, lng: -90.1994, continent: "mondo", season: 4, description: "1904: Olimpiadi caratterizzate da corruzione e eugenetica" },
+            { name: "Il Caso del Lupo Mannaro di Hannover - L'infamia", location: "Hannover, Germania", lat: 52.3702, lng: 9.7391, continent: "europa", season: 4, description: "Anni '20: un mostro uccide e mangia giovani ragazzi" },
+            { name: "Il Caso del Lupo Mannaro di Hannover - La Rabbia", location: "Hannover, Germania", lat: 52.3702, lng: 9.7391, continent: "europa", season: 4, description: "Inizio Novecento: scoperte di resti di ragazzi nel fiume" },
+            // STAGIONE 3
+            { name: "Il Caso del Black Metal Norvegese - Silenzio Mortale", location: "Norvegia", lat: 60.4720, lng: 8.4689, continent: "europa", season: 3, description: "Anni '90: una band di 16enni sconvolge la Norvegia" },
+            { name: "Il Caso del Black Metal Norvegese - L'alba dei Cuori Neri", location: "Norvegia", lat: 60.4720, lng: 8.4689, continent: "europa", season: 3, description: "Anni '80: metallari adolescenti trovano inferno" },
+            { name: "Il Caso Emoscambio", location: "Milano, Italia", lat: 45.4642, lng: 9.1900, continent: "italia", season: 3, description: "Anni '70: un uomo dipinge scritte per raggiungere l'immortalità" },
+            { name: "Il Caso Action Park", location: "Vernon Township, New Jersey, USA", lat: 41.1381, lng: -74.2786, continent: "mondo", season: 3, description: "Inizi anni '80: il parco più pericoloso che sia mai esistito" },
+            { name: "Il Caso del Conte Von Cosel - Amore Immortale", location: "Florida, USA", lat: 25.7617, lng: -80.1918, continent: "mondo", season: 3, description: "Anni '30: un immigrato tedesco incontra il suo amore" },
+            { name: "Il Caso del Conte Von Cosel - Finché morte non ci riunisca", location: "Florida, USA", lat: 25.7617, lng: -80.1918, continent: "mondo", season: 3, description: "Anni '40: la morte non separa il suo amore" },
+            { name: "Il Caso Amicizia", location: "Montesilvano, Abruzzo, Italia", lat: 42.5169, lng: 14.0074, continent: "italia", season: 3, description: "Metà anni '50: contatti con alieni del sottosuolo" },
+            { name: "Il Caso Padre Pio - Il Risveglio della Forza", location: "Puglia, Italia", lat: 41.1171, lng: 16.8706, continent: "italia", season: 3, description: "Prima metà Novecento: un frate con doni sovrumani" },
+            { name: "Il Caso Padre Pio - Endgame", location: "Puglia, Italia", lat: 41.1171, lng: 16.8706, continent: "italia", season: 3, description: "Epoca fascista: un frate conteso dalla Santa Sede" },
+            // STAGIONE 2
+            { name: "Il Caso del Dr. Satana - L'alba dell'orrore", location: "Borgogna, Francia", lat: 47.3220, lng: 4.8495, continent: "europa", season: 2, description: "Il serial killer più agghiacciante non conosciuto" },
+            { name: "Il Caso del Dr. Satana - Diavolo mangia Diavolo", location: "Parigi, Francia", lat: 48.8566, lng: 2.3522, continent: "europa", season: 2, description: "Parigi: Marcel Petiot terrorizia la Gestapo" },
+            { name: "Il Caso degli incontri ravvicinati del IV tipo in Italia", location: "Italia", lat: 41.8719, lng: 12.5674, continent: "italia", season: 2, description: "Anni '50+: il nostro Paese visitato da alieni" },
+            { name: "Il Caso del Boia di Albenga", location: "Albenga, Italia", lat: 44.0544, lng: 8.2256, continent: "italia", season: 2, description: "Il più grande mostro della storia italiana" },
+            { name: "Il Caso del Vampiro della Bergamasca", location: "Provincia Bergamasca, Italia", lat: 45.6983, lng: 9.6722, continent: "italia", season: 2, description: "Fine '800: un uomo attacca donne per bere sangue" },
+            { name: "Il Caso Amanda Knox - L'omicidio", location: "Perugia, Italia", lat: 43.1122, lng: 12.3932, continent: "italia", season: 2, description: "Giorno dopo Halloween: Meredith Kercher uccisa" },
+            { name: "Il Caso Amanda Knox - Le indagini", location: "Perugia, Italia", lat: 43.1122, lng: 12.3932, continent: "italia", season: 2, description: "Un assassino penetra l'appartamento ma accusano altri" },
+            { name: "Il Caso Amanda Knox - Il processo", location: "Perugia, Italia", lat: 43.1122, lng: 12.3932, continent: "italia", season: 2, description: "Il processo per la morte della 21enne inglese" },
+            // STAGIONE 1
+            { name: "Il caso dei Bambini di Satana - Parte 1", location: "Bologna, Italia", lat: 44.4949, lng: 11.3426, continent: "italia", season: 1, description: "Inizi anni '90: sospetta setta satanica violenta" },
+            { name: "Il caso dei Bambini di Satana - Parte 2", location: "Bologna, Italia", lat: 44.4949, lng: 11.3426, continent: "italia", season: 1, description: "Metà anni '90: presunta banda che sevizia bambini" },
+            { name: "Il caso del Mostro di Bolzano - Parte 1", location: "Bolzano, Italia", lat: 46.4983, lng: 11.3361, continent: "italia", season: 1, description: "Fine anni '80: omicidi misteriosi di donne" },
+            { name: "Il caso del Mostro di Bolzano - Parte 2", location: "Bolzano, Italia", lat: 46.4983, lng: 11.3361, continent: "italia", season: 1, description: "Marco Bergamo: un mostro che uccide brutalmente" },
+            { name: "Il caso del metronotte Zanfretta rapito dagli alieni - Parte 1", location: "Genova, Liguria, Italia", lat: 44.4056, lng: 8.9463, continent: "italia", season: 1, description: "Dicembre 1978: rapito da un disco volante" },
+            { name: "Il caso del metronotte Zanfretta rapito dagli alieni - Parte 2", location: "Liguria, Italia", lat: 44.4056, lng: 8.9463, continent: "italia", season: 1, description: "Fine anni '70: alieni e Vespe volanti in Liguria" },
+            { name: "Il caso Di Joseph Smith e della Chiesa Mormona", location: "New York, USA", lat: 42.6526, lng: -73.7562, continent: "mondo", season: 1, description: "1800: un angelo genera una religione di 15 milioni" }
+        ];
+
+        let map;
+        let markers = [];
+        let currentFilter = 'all';
+        let currentSeason = 'all';
+        let filteredCases = [...caseData];
+
+        function initMap() {
+            map = L.map('map').setView([20, 0], 3);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                maxZoom: 18,
+            }).addTo(map);
+
+            displayCases();
+            updateStats();
+        }
+
+        function getMarkerColor(continent) {
+            switch(continent) {
+                case 'italia': return '#ff4757';
+                case 'europa': return '#3498db';
+                case 'mondo': return '#f39c12';
+                default: return '#95a5a6';
+            }
+        }
+
+        function displayCases() {
+            // Rimuovi tutti i marker precedenti
+            markers.forEach(marker => map.removeLayer(marker));
+            markers = [];
+
+            filteredCases.forEach(caseItem => {
+                const color = getMarkerColor(caseItem.continent);
+                
+                const customIcon = L.divIcon({
+                    className: 'custom-marker',
+                    html: `<div style="background: ${color}; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; font-size: 12px; color: white; font-weight: bold;"></div>`,
+                    iconSize: [30, 30],
+                    iconAnchor: [15, 15]
+                });
+
+                const marker = L.marker([caseItem.lat, caseItem.lng], { icon: customIcon })
+                    .bindPopup(createPopupContent(caseItem), { maxWidth: 300 })
+                    .addTo(map);
+
+                markers.push(marker);
+            });
+        }
+
+        function createPopupContent(caseItem) {
+            return `<div class="popup-content">
+                <h3>${caseItem.name}</h3>
+                <p>${caseItem.description}</p>
+                <div class="popup-location">📍 ${caseItem.location}</div>
+            </div>`;
+        }
+
+        function filterByContinent(continent) {
+            currentFilter = continent;
+            
+            // Aggiorna i bottoni
+            document.querySelectorAll('.btn-filter').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            applyFilters();
+        }
+
+        function filterBySeason(season) {
+            currentSeason = season;
+            applyFilters();
+        }
+
+        function applyFilters() {
+            // Filtra per continente e stagione
+            filteredCases = caseData.filter(c => {
+                const matchContinent = currentFilter === 'all' || c.continent === currentFilter;
+                const matchSeason = currentSeason === 'all' || c.season === parseInt(currentSeason);
+                return matchContinent && matchSeason;
+            });
+
+            displayCases();
+            updateStats();
+            
+            // Zoom sui casi filtrati
+            if (filteredCases.length > 0) {
+                const group = new L.featureGroup(markers);
+                map.fitBounds(group.getBounds(), { padding: [50, 50] });
+            }
+        }
+
+        function updateStats() {
+            const count = filteredCases.length;
+            document.getElementById('caseCount').textContent = `${count} caso${count !== 1 ? 'i' : ''} sulla mappa`;
+        }
+
+        // Ricerca
+        document.getElementById('searchInput').addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+            
+            if (searchTerm === '') {
+                applyFilters();
+            } else {
+                filteredCases = caseData.filter(c => 
+                    (currentFilter === 'all' || c.continent === currentFilter) &&
+                    (currentSeason === 'all' || c.season === parseInt(currentSeason)) &&
+                    (c.name.toLowerCase().includes(searchTerm) || 
+                     c.location.toLowerCase().includes(searchTerm) ||
+                     c.description.toLowerCase().includes(searchTerm))
+                );
+                displayCases();
+                updateStats();
+            }
+        });
+
+        // Inizializza la mappa quando la pagina è caricata
+        window.addEventListener('load', initMap);
+    </script>
+</body>
+</html>
