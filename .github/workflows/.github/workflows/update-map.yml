@@ -1,0 +1,51 @@
+name: Update Podcast Map
+
+on:
+  schedule:
+    # Ogni domenica alle 10:00 UTC
+    - cron: '0 10 * * 0'
+  workflow_dispatch:  # Permette di eseguire manualmente
+
+jobs:
+  update-map:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+      
+      - name: Extract episodes from Spotify
+        env:
+          SPOTIFY_CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID }}
+          SPOTIFY_CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
+        run: python extract_episodes.py
+      
+      - name: Check if data changed
+        id: changes
+        run: |
+          if git diff --quiet episodi_map.json; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Commit and push changes
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add episodi_map.json
+          git commit -m "🔄 Update podcast episodes - $(date +'%Y-%m-%d %H:%M:%S')"
+          git push
