@@ -1,0 +1,90 @@
+name: Update Podcast Map
+
+on:
+  schedule:
+    # Ogni domenica alle 10:00 UTC
+    - cron: '0 10 * * 0'
+  workflow_dispatch:  # Permette di eseguire manualmente
+
+jobs:
+  update-map:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: Debug - Check Python and dependencies
+        run: |
+          python --version
+          pip list | grep -E 'requests|geopy'
+          pwd
+          ls -la
+      
+      - name: Extract episodes from Spotify
+        env:
+          SPOTIFY_CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID }}
+          SPOTIFY_CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
+        run: |
+          echo "🔐 Checking credentials..."
+          echo "Client ID: ${SPOTIFY_CLIENT_ID:0:5}..."
+          echo "Client Secret: ${SPOTIFY_CLIENT_SECRET:0:5}..."
+          python extract_episodes_hybrid.py
+          echo "✅ Script completato"
+      
+      - name: Debug - Check if JSON was created
+        run: |
+          echo "📂 Contenuto della cartella:"
+          ls -la
+          echo ""
+          echo "📊 Verifica episodi_map.json:"
+          if [ -f episodi_map.json ]; then
+            echo "✅ File trovato!"
+            ls -lh episodi_map.json
+            head -30 episodi_map.json
+          else
+            echo "❌ File NON trovato - lo script ha avuto errori"
+            exit 1
+          fi
+      
+      - name: Commit and push changes
+        if: success()
+        run: |
+          if [ -f episodi_map.json ]; then
+            git config --local user.email "action@github.com"
+            git config --local user.name "GitHub Action"
+            git add episodi_map.json
+            git diff --cached --quiet || (
+              git commit -m "🔄 Update podcast episodes - $(date +'%Y-%m-%d %H:%M:%S')"
+              git push
+            )
+            echo "✅ Push completato"
+          else
+            echo "❌ episodi_map.json non trovato, skip push"
+            exit 1
+          fi
+      
+      - name: Notify success
+        if: success()
+        run: echo "✅ Workflow completato con successo!"
+      
+      - name: Notify failure
+        if: failure()
+        run: |
+          echo "❌ Workflow fallito"
+          echo "Controlla:"
+          echo "1. I secrets Spotify sono impostati?"
+          echo "2. Lo script extract_episodes_hybrid.py è nella cartella root?"
+          echo "3. Il file requirements.txt esiste?"
